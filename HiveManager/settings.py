@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,9 +25,61 @@ SECRET_KEY = 'django-insecure-qs+c_!llebu@3u)l67k02+$_c@_-mk9w*0p+)47i&_#s5%mc)g
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
+# Указание, что используется email как логин
+AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend',
+                           'axes.backends.AxesStandaloneBackend',
+                           'allauth.account.auth_backends.AuthenticationBackend',
+                           ]
+
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+
+# Перенаправление после входа/выхода
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
 # Application definition
+
+# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'  # Ваш RabbitMQ URL
+# CELERY_TASK_SERIALIZER = 'json'
+# CELERY_ACCEPT_CONTENT = ['json']
+# CELERY_RESULT_SERIALIZER = 'json'
+
+
+AXES_FAILURE_LIMIT = 5  # Максимальное количество попыток входа
+AXES_COOLOFF_TIME = 1  # Время блокировки (в часах)
+AXES_RESET_ON_SUCCESS = True  # Сбросить счётчик при успешном входе
+AXES_LOCKOUT_TEMPLATE = 'auth/lockout.html'  # Шаблон для заблокированных пользователей (опционально)
+AXES_LOCKOUT_URL = '/lockout/'  # URL-адрес для заблокированных пользователей (опционально)
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'axes.log',
+        },
+    },
+    'loggers': {
+        'axes': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -36,9 +89,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'users',
-    'tasks',
-    'authorization',
+    'HiveManager.users',
+    'HiveManager.tasks',
+    'HiveManager.authorization',
+    'axes',
+    'allauth.socialaccount.providers.google',  # Для Google
+    'allauth.socialaccount.providers.github',
 
 ]
 
@@ -50,15 +106,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
+
+SITE_ID = 1
 
 ROOT_URLCONF = 'HiveManager.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -111,6 +169,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'users.User'
+LOGIN_URL = '/api/authorization/login/'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

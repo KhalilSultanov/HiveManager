@@ -1,6 +1,6 @@
 from django.db import models
 
-from users.models import User
+from HiveManager.users.models import User
 
 
 class Task(models.Model):
